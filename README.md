@@ -41,7 +41,7 @@ Tâche : Créer deux volumes :
 - Volume pour WordPress (fichiers applicatifs / uploads)
 - Volume pour MySQL (données de la base)
 
-Lister ensuite les volumes pour vérifier leur création.
+Lister ensuite les volumes pour vérifier leur création
 
 ---
 
@@ -70,9 +70,7 @@ Tâches :
 2. Publier le port HTTP (externe → interne)
 3. Fournir les variables d’environnement pour la connexion MySQL
 4. Attacher le volume persistant
-5. Accéder à l’URL locale et compléter l’installation initiale (titre, admin, etc.)
-
-Noter ici l’URL d’accès choisie.
+5. Accéder à l’URL locale et compléter l’installation initiale (titre, admin ...)
 
 ---
 
@@ -109,22 +107,3 @@ Choisir une ou plusieurs sous-tâches :
 - [ ] Persistance validée après recréation
 - [ ] Bonus réalisé (au moins un)
 - [ ] Plan de migration Compose rédigé
-
----
-
-## Points de réflexion
-- Pourquoi séparer applicatif et base ?
-- Différence entre volume nommé et bind mount ?
-- Risques liés aux mots de passe en clair ?
-- Quelles optimisations sécurité ajouter (ex: non-root, backups) ?
-
----
-
-## Prochaines étapes suggérées
-- Introduire docker-compose.yml
-- Ajouter un reverse proxy (HTTPS)
-- Sauvegardes automatisées (dump)
-- Surveillance (logs / métriques)
-- Séparation fine de wp-content dans un volume dédié
-
-Fin de l’énoncé.
