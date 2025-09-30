@@ -18,113 +18,177 @@
 # Déploiement WordPress + MySQL avec Docker
 
 ## Contexte
-Déployer WordPress en production avec deux conteneurs isolés (WordPress / MySQL), reliés via un réseau Docker, avec persistance des données
+Vous devez déployer un site WordPress en production. Chaque composant (WordPress et MySQL) tourne dans un conteneur séparé. Vous utilisez Docker pour gérer :
+- L’isolation (conteneurs)
+- La persistance (volumes)
+- La communication (réseau Docker)
 
-## Objectifs
-- Créer un réseau dédié
-- Créer des volumes persistants
-- Démarrer la base de données
-- Lancer l’application WordPress
-- Vérifier la persistance après suppression des conteneurs
-- (Bonus) Ajouter phpMyAdmin
-
----
-
-## Étape 1 : Réseau
-Tâche : Créer un réseau nommé (ex: wp_network) 
-Indiquer la commande utilisée ici
+## Prérequis
+- Docker installé
+- Connaissance basique des commandes : `docker run`, `docker volume`, `docker network`, `docker logs`, `docker ps`
 
 ---
 
-## Étape 2 : Volumes
-Tâche : Créer deux volumes :
-- Volume pour WordPress (fichiers applicatifs / uploads)
-- Volume pour MySQL (données de la base)
-
-Lister ensuite les volumes pour vérifier leur création.
-
----
-
-## Étape 3 : Conteneur MySQL
-Tâches :
-1. Lancer un conteneur MySQL (image 8.x)
-2. Définir :
-   - Mot de passe root
-   - Base par défaut
-   - Utilisateur et mot de passe applicatif
-3. Attacher le volume persistant
-4. Rattacher au réseau créé
-5. Vérifier l’état via les commandes d’inspection/logs
-
-Variables à définir (exemple) :
-- MYSQL_ROOT_PASSWORD = ?
-- MYSQL_DATABASE = ?
-- MYSQL_USER = ?
-- MYSQL_PASSWORD = ?
+## Vue d’ensemble
+Composants :
+- MySQL (base de données)
+- WordPress (application web)
+- Volumes : `db_data` (données MySQL), `wp_data` (fichiers WordPress)
+- Réseau : `wp_network`
+- (Bonus) phpMyAdmin pour l’administration
 
 ---
 
-## Étape 4 : Conteneur WordPress
-Tâches :
-1. Lancer le conteneur WordPress
-2. Publier le port HTTP (externe → interne)
-3. Fournir les variables d’environnement pour la connexion MySQL
-4. Attacher le volume persistant
-5. Accéder à l’URL locale et compléter l’installation initiale (titre, admin, etc.)
+## Étape 1 : Créer un réseau Docker
+Permet la résolution DNS interne entre conteneurs.
 
-Noter ici l’URL d’accès choisie.
+```bash
+docker network create wp_network
+```
 
----
-
-## Étape 5 : Test de persistance
-Procédure à exécuter :
-1. Arrêter les deux conteneurs
-2. Les supprimer sans détruire les volumes
-3. Les recréer à l’identique
-4. Vérifier que :
-   - Le site WordPress conserve sa configuration
-   - Les données MySQL sont intactes
-
-Observation / Résultat attendu :
-- Décrire ce qui confirme la persistance
+Vérifier :
+```bash
+docker network ls
+```
 
 ---
 
-## Étape 6 : Bonus
-Choisir une ou plusieurs sous-tâches :
-- Inspecter le réseau Docker et identifier les conteneurs attachés
-- Ajouter un conteneur d’administration (phpMyAdmin)
-- Accéder à l’interface d’administration MySQL via ce conteneur
-- Vérifier la résolution DNS interne (ping / connexion)
-- Lister les volumes et indiquer leur point de montage réel (facultatif)
+## Étape 2 : Créer les volumes de persistance
+
+```bash
+docker volume create wp_data
+docker volume create db_data
+```
+
+Lister :
+```bash
+docker volume ls
+```
 
 ---
 
-## Vérifications finales (Checklist)
-- [ ] Réseau créé
-- [ ] Volumes créés
-- [ ] Conteneur MySQL fonctionnel
-- [ ] Conteneur WordPress accessible
-- [ ] Installation initiale effectuée
-- [ ] Persistance validée après recréation
-- [ ] Bonus réalisé (au moins un)
-- [ ] Plan de migration Compose rédigé
+## Étape 3 : Lancer le conteneur MySQL
+
+```bash
+docker run -d \
+  --name mysql_db \
+  --network wp_network \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=wordpress \
+  -e MYSQL_USER=wp_user \
+  -e MYSQL_PASSWORD=wp_password \
+  -v db_data:/var/lib/mysql \
+  mysql:8.0
+```
+
+Vérifications :
+```bash
+docker ps
+docker logs mysql_db
+```
 
 ---
 
-## Points de réflexion
-- Pourquoi séparer applicatif et base ?
-- Différence entre volume nommé et bind mount ?
-- Risques liés aux mots de passe en clair ?
-- Quelles optimisations sécurité ajouter (ex: non-root, backups) ?
+## Étape 4 : Lancer le conteneur WordPress
+
+```bash
+docker run -d \
+  --name wordpress_site \
+  --network wp_network \
+  -p 8080:80 \
+  -e WORDPRESS_DB_HOST=mysql_db:3306 \
+  -e WORDPRESS_DB_USER=wp_user \
+  -e WORDPRESS_DB_PASSWORD=wp_password \
+  -e WORDPRESS_DB_NAME=wordpress \
+  -v wp_data:/var/www/html \
+  wordpress:latest
+```
+
+Accès :
+```
+http://localhost:8080
+```
+
+Suivre l’assistant d’installation (choisir langue, titre, utilisateur admin, etc.).
 
 ---
 
-## Prochaines étapes suggérées
-- Introduire docker-compose.yml
-- Ajouter un reverse proxy (HTTPS)
-- Sauvegardes automatisées (dump)
-- Surveillance (logs / métriques)
-- Séparation fine de wp-content dans un volume dédié
+## Étape 5 : Vérifier la persistance
 
-Fin de l’énoncé.
+Arrêter / supprimer les conteneurs :
+```bash
+docker stop wordpress_site mysql_db
+docker rm wordpress_site mysql_db
+```
+
+Relancer avec EXACTEMENT les mêmes commandes (les volumes `wp_data` et `db_data` existent toujours)
+Revenir sur `http://localhost:8080` → le site et la config doivent être intactes
+
+---
+
+## Étape 6 : Bonus / Extensions
+
+### Inspecter le réseau
+```bash
+docker network inspect wp_network
+```
+
+### Ajouter phpMyAdmin
+```bash
+docker run -d \
+  --name phpmyadmin \
+  --network wp_network \
+  -p 8081:80 \
+  -e PMA_HOST=mysql_db \
+  phpmyadmin/phpmyadmin
+```
+
+Accès :
+```
+http://localhost:8081
+```
+
+## Commandes de diagnostic utiles
+
+```bash
+docker ps
+docker logs -f wordpress_site
+docker exec -it mysql_db mysql -u wp_user -p
+docker volume inspect db_data
+docker inspect wordpress_site | grep IPAddress -n
+```
+
+---
+
+## Nettoyage
+
+```bash
+docker stop wordpress_site mysql_db phpmyadmin
+docker rm wordpress_site mysql_db phpmyadmin
+docker volume rm wp_data db_data
+docker network rm wp_network
+```
+
+(Ne supprimez pas les volumes si vous voulez garder les données.)
+
+---
+
+## Résumé Rapide
+
+| Élément        | Nom             | Rôle                          |
+|----------------|-----------------|-------------------------------|
+| Réseau         | wp_network      | Communication inter-conteneurs |
+| Volume MySQL   | db_data         | Données persistantes DB       |
+| Volume WP      | wp_data         | Fichiers (plugins, uploads)   |
+| Conteneur DB   | mysql_db        | MySQL 8.0                     |
+| Conteneur WP   | wordpress_site  | Application WordPress         |
+| (Option) Admin | phpmyadmin      | Interface DB                  |
+
+---
+
+## Étapes suivantes suggérées
+1. Créer un `docker-compose.yml`
+2. Ajouter des backups (dump régulier MySQL)
+3. Ajouter un reverse proxy (Traefik / Nginx) + HTTPS
+4. Ajouter un volume séparé pour `wp-content` (optimisation)
+5. Surveiller avec `docker stats` et logs centralisés
